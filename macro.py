@@ -9,6 +9,11 @@ from pynput import mouse, keyboard
 from pynput.mouse import Button, Controller as MouseController
 from pynput.keyboard import Key, Controller as KeyboardController
 
+# Hide console window on Windows
+if os.name == 'nt':
+    import ctypes
+    ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+
 class MouseRecorderRepeater:
     def __init__(self, gui_callback=None):
         self.mouse = MouseController()
