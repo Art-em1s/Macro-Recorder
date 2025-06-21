@@ -11,6 +11,11 @@ A powerful yet simple Python-based mouse macro recorder with an intuitive GUI in
 - ⌨️ **Keyboard Shortcuts** - Quick control without touching the mouse
 - 💾 **Persistent Settings** - Configuration automatically saved between sessions
 - 🔇 **Silent Operation** - Run without console windows for clean execution
+- 📋 **Action Editor** - Interactive list showing all recorded actions with detailed information
+- ⏱️ **Timing Control** - Edit delays between actions with precision timing editor
+- 🗑️ **Action Management** - Delete, reorder, and modify individual actions
+- 💾 **Macro Save/Load** - Export and import macros with JSON format and metadata
+- 🔄 **Real-time Updates** - Live action list that updates as you record
 
 ## 🚀 Quick Start
 
@@ -44,6 +49,11 @@ pythonw macro.py
 | **Start/Stop Replay** | Play back recorded actions |
 | **Manual Calibration** | Calibrate for your specific screen setup |
 | **Clear Actions** | Remove all recorded actions |
+| **Save Macro** | Export current macro to JSON file with timestamp |
+| **Load Macro** | Import previously saved macro from JSON file |
+| **Edit Timing** | Modify delay for selected action in the list |
+| **Delete Selected** | Remove selected action from the sequence |
+| **Move Up/Down** | Reorder actions in the sequence |
 
 ### Keyboard Shortcuts (Global)
 | Key | Action |
@@ -57,8 +67,20 @@ pythonw macro.py
 1. **Start Recording** - Click the record button or press Left Arrow
 2. **Perform Actions** - Move mouse and click as needed
 3. **Stop Recording** - Click record button again or press Left Arrow
-4. **Replay** - Press Right Arrow or click replay button
-5. **Repeat** - Actions will loop until you stop replay
+4. **Edit Actions** (Optional):
+   - View all actions in the interactive list
+   - Select any action to edit its timing delay
+   - Delete unwanted actions or reorder the sequence
+   - Fine-tune your macro for perfect execution
+5. **Save Macro** (Optional) - Export your macro with automatic timestamped filename
+6. **Replay** - Press Right Arrow or click replay button
+7. **Repeat** - Actions will loop until you stop replay
+
+### Action Editing Features
+- **Interactive Action List**: View all recorded actions with Type, Coordinates, Button, and Delay columns
+- **Precision Timing**: Edit individual action delays with millisecond precision
+- **Sequence Management**: Delete unwanted actions or reorder them with move up/down
+- **Macro Persistence**: Save and load macros with metadata including creation time and action count
 
 ## ⚙️ Configuration & Calibration
 
@@ -82,6 +104,19 @@ Settings are stored in `mouse_recorder_config.json`:
   "offset_y": 0,
   "screen_width": 1920,
   "screen_height": 1080
+}
+```
+
+### Macro File Format
+Saved macros use JSON format with metadata:
+```json
+{
+  "actions": [
+    ["move", 100, 200, 0.1],
+    ["click", 150, 250, "left", true, 0.5]
+  ],
+  "created": "2024-12-21 14:30:52",
+  "action_count": 2
 }
 ```
 
