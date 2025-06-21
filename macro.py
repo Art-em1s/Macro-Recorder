@@ -318,6 +318,9 @@ class MacroRecorderGUI:
         self.config_label = ttk.Label(status_frame, text="")
         self.config_label.pack(anchor=tk.W)
         
+        self.recording_notice = ttk.Label(status_frame, text="", foreground="red")
+        self.recording_notice.pack(anchor=tk.W)
+        
         # Actions display with editing capabilities
         actions_frame = ttk.LabelFrame(main_frame, text="Recorded Actions", padding="5")
         actions_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -671,9 +674,13 @@ class MacroRecorderGUI:
         if self.recorder.recording:
             status = "🔴 Recording..."
             self.record_btn.config(text="Stop Recording")
+            self.recording_notice.config(text="⚠️ Macro editing disabled during recording")
+            self.lock_editing_buttons()
         else:
             status = "⚪ Ready"
             self.record_btn.config(text="Start Recording")
+            self.recording_notice.config(text="")
+            self.unlock_editing_buttons()
             
         if self.recorder.repeating:
             status += " | 🔄 Replaying..."
@@ -698,6 +705,26 @@ class MacroRecorderGUI:
         
         self.root.after(100, self.update_status)
         
+    def lock_editing_buttons(self):
+        self.clear_btn.config(state="disabled")
+        self.save_btn.config(state="disabled")
+        self.load_btn.config(state="disabled")
+        self.keyboard_checkbox.config(state="disabled")
+        self.edit_timing_btn.config(state="disabled")
+        self.delete_action_btn.config(state="disabled")
+        self.move_up_btn.config(state="disabled")
+        self.move_down_btn.config(state="disabled")
+    
+    def unlock_editing_buttons(self):
+        self.clear_btn.config(state="normal")
+        self.save_btn.config(state="normal")
+        self.load_btn.config(state="normal")
+        self.keyboard_checkbox.config(state="normal")
+        self.edit_timing_btn.config(state="normal")
+        self.delete_action_btn.config(state="normal")
+        self.move_up_btn.config(state="normal")
+        self.move_down_btn.config(state="normal")
+
     def update_log(self, message):
         timestamp = time.strftime("%H:%M:%S")
         self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
