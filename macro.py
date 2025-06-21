@@ -256,7 +256,7 @@ class MacroRecorderGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Mouse Macro Recorder")
-        self.root.geometry("600x500")
+        self.root.geometry("750x500")  # Increased width to accommodate all buttons + 50px
         self.root.resizable(True, True)
         
         self.setup_ui()
