@@ -235,7 +235,13 @@ class MacroRecorderGUI:
         self.calibrate_btn.pack(side=tk.LEFT, padx=(0, 5))
         
         self.clear_btn = ttk.Button(button_frame, text="Clear Actions", command=self.clear_actions)
-        self.clear_btn.pack(side=tk.LEFT)
+        self.clear_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.save_btn = ttk.Button(button_frame, text="Save Macro", command=self.save_macro)
+        self.save_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.load_btn = ttk.Button(button_frame, text="Load Macro", command=self.load_macro)
+        self.load_btn.pack(side=tk.LEFT)
         
         # Status display
         status_frame = ttk.LabelFrame(main_frame, text="Status", padding="5")
@@ -250,13 +256,60 @@ class MacroRecorderGUI:
         self.config_label = ttk.Label(status_frame, text="")
         self.config_label.pack(anchor=tk.W)
         
-        # Log display
+        # Actions display with editing capabilities
+        actions_frame = ttk.LabelFrame(main_frame, text="Recorded Actions", padding="5")
+        actions_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        actions_frame.columnconfigure(0, weight=1)
+        actions_frame.rowconfigure(0, weight=1)
+        
+        # Create treeview for actions
+        columns = ('Type', 'X', 'Y', 'Button', 'Delay (s)')
+        self.actions_tree = ttk.Treeview(actions_frame, columns=columns, show='headings', height=8)
+        
+        # Configure column headings
+        self.actions_tree.heading('Type', text='Type')
+        self.actions_tree.heading('X', text='X')
+        self.actions_tree.heading('Y', text='Y')
+        self.actions_tree.heading('Button', text='Button')
+        self.actions_tree.heading('Delay (s)', text='Delay (s)')
+        
+        # Configure column widths
+        self.actions_tree.column('Type', width=80)
+        self.actions_tree.column('X', width=60)
+        self.actions_tree.column('Y', width=60)
+        self.actions_tree.column('Button', width=80)
+        self.actions_tree.column('Delay (s)', width=80)
+        
+        # Add scrollbar to treeview
+        tree_scrollbar = ttk.Scrollbar(actions_frame, orient=tk.VERTICAL, command=self.actions_tree.yview)
+        self.actions_tree.configure(yscrollcommand=tree_scrollbar.set)
+        
+        self.actions_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        tree_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Action editing buttons
+        edit_frame = ttk.Frame(actions_frame)
+        edit_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(5, 0))
+        
+        self.edit_timing_btn = ttk.Button(edit_frame, text="Edit Timing", command=self.edit_timing)
+        self.edit_timing_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.delete_action_btn = ttk.Button(edit_frame, text="Delete Selected", command=self.delete_selected_action)
+        self.delete_action_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.move_up_btn = ttk.Button(edit_frame, text="Move Up", command=self.move_action_up)
+        self.move_up_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.move_down_btn = ttk.Button(edit_frame, text="Move Down", command=self.move_action_down)
+        self.move_down_btn.pack(side=tk.LEFT)
+        
+        # Log display (smaller now)
         log_frame = ttk.LabelFrame(main_frame, text="Activity Log", padding="5")
-        log_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        log_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=15, width=70)
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=6, width=70)
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Keyboard shortcuts info
@@ -292,6 +345,245 @@ class MacroRecorderGUI:
         self.recorder.actions = []
         self.update_log("Actions cleared")
         self.update_status()
+        self.refresh_actions_display()
+    
+    def edit_timing(self):
+        selection = self.actions_tree.selection()
+        if not selection:
+            self.update_log("Please select an action to edit timing")
+            return
+        
+        item = selection[0]
+        action_index = int(self.actions_tree.index(item))
+        
+        if action_index >= len(self.recorder.actions):
+            self.update_log("Invalid action selected")
+            return
+            
+        current_delay = self.recorder.actions[action_index][-1]
+        
+        # Create timing edit dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Edit Action Timing")
+        dialog.geometry("300x150")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{x}+{y}")
+        
+        ttk.Label(dialog, text=f"Edit delay for action {action_index + 1}:").pack(pady=10)
+        
+        delay_var = tk.StringVar(value=str(current_delay))
+        delay_entry = ttk.Entry(dialog, textvariable=delay_var, width=20)
+        delay_entry.pack(pady=5)
+        delay_entry.focus()
+        delay_entry.select_range(0, tk.END)
+        
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(pady=10)
+        
+        def save_timing():
+            try:
+                new_delay = float(delay_var.get())
+                if new_delay < 0:
+                    raise ValueError("Delay cannot be negative")
+                
+                # Update the action's delay
+                action = list(self.recorder.actions[action_index])
+                action[-1] = new_delay
+                self.recorder.actions[action_index] = tuple(action)
+                
+                self.update_log(f"Updated action {action_index + 1} delay to {new_delay:.3f}s")
+                self.refresh_actions_display()
+                dialog.destroy()
+            except ValueError as e:
+                self.update_log(f"Invalid delay value: {e}")
+        
+        def cancel_edit():
+            dialog.destroy()
+        
+        ttk.Button(button_frame, text="Save", command=save_timing).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=cancel_edit).pack(side=tk.LEFT, padx=5)
+        
+        # Bind Enter key to save
+        dialog.bind('<Return>', lambda e: save_timing())
+        dialog.bind('<Escape>', lambda e: cancel_edit())
+    
+    def delete_selected_action(self):
+        selection = self.actions_tree.selection()
+        if not selection:
+            self.update_log("Please select an action to delete")
+            return
+        
+        item = selection[0]
+        action_index = int(self.actions_tree.index(item))
+        
+        if action_index >= len(self.recorder.actions):
+            self.update_log("Invalid action selected")
+            return
+        
+        # Remove the action
+        del self.recorder.actions[action_index]
+        self.update_log(f"Deleted action {action_index + 1}")
+        self.refresh_actions_display()
+        self.update_status()
+    
+    def move_action_up(self):
+        selection = self.actions_tree.selection()
+        if not selection:
+            self.update_log("Please select an action to move")
+            return
+        
+        item = selection[0]
+        action_index = int(self.actions_tree.index(item))
+        
+        if action_index == 0:
+            self.update_log("Action is already at the top")
+            return
+        
+        if action_index >= len(self.recorder.actions):
+            self.update_log("Invalid action selected")
+            return
+        
+        # Swap with previous action
+        actions = self.recorder.actions
+        actions[action_index], actions[action_index - 1] = actions[action_index - 1], actions[action_index]
+        
+        self.update_log(f"Moved action {action_index + 1} up")
+        self.refresh_actions_display()
+        
+        # Reselect the moved item
+        new_item = self.actions_tree.get_children()[action_index - 1]
+        self.actions_tree.selection_set(new_item)
+    
+    def move_action_down(self):
+        selection = self.actions_tree.selection()
+        if not selection:
+            self.update_log("Please select an action to move")
+            return
+        
+        item = selection[0]
+        action_index = int(self.actions_tree.index(item))
+        
+        if action_index >= len(self.recorder.actions) - 1:
+            self.update_log("Action is already at the bottom")
+            return
+        
+        # Swap with next action
+        actions = self.recorder.actions
+        actions[action_index], actions[action_index + 1] = actions[action_index + 1], actions[action_index]
+        
+        self.update_log(f"Moved action {action_index + 1} down")
+        self.refresh_actions_display()
+        
+        # Reselect the moved item
+        new_item = self.actions_tree.get_children()[action_index + 1]
+        self.actions_tree.selection_set(new_item)
+    
+    def refresh_actions_display(self):
+        # Clear existing items
+        for item in self.actions_tree.get_children():
+            self.actions_tree.delete(item)
+        
+        # Add actions to treeview
+        for i, action in enumerate(self.recorder.actions):
+            action_type = action[0]
+            
+            if action_type == 'move':
+                x, y, delay = action[1], action[2], action[3]
+                self.actions_tree.insert('', 'end', values=(action_type, x, y, '-', f"{delay:.3f}"))
+            elif action_type == 'click':
+                x, y, button, pressed, delay = action[1], action[2], action[3], action[4], action[5]
+                button_text = 'Right' if button.name == 'right' else 'Left'
+                press_text = 'Press' if pressed else 'Release'
+                self.actions_tree.insert('', 'end', values=(f"{press_text}", x, y, button_text, f"{delay:.3f}"))
+    
+    def save_macro(self):
+        if not self.recorder.actions:
+            self.update_log("No actions to save")
+            return
+        
+        from tkinter import filedialog
+        import datetime
+        
+        # Generate default filename with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_name = f"macro_{timestamp}.json"
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            title="Save Macro",
+            initialvalue=default_name
+        )
+        
+        if file_path:
+            try:
+                # Convert actions to serializable format
+                serializable_actions = []
+                for action in self.recorder.actions:
+                    if action[0] == 'click':
+                        # Convert button object to string
+                        action_list = list(action)
+                        action_list[3] = action[3].name  # Convert button to string
+                        serializable_actions.append(action_list)
+                    else:
+                        serializable_actions.append(list(action))
+                
+                macro_data = {
+                    'actions': serializable_actions,
+                    'created': time.strftime("%Y-%m-%d %H:%M:%S"),
+                    'action_count': len(self.recorder.actions)
+                }
+                
+                with open(file_path, 'w') as f:
+                    json.dump(macro_data, f, indent=2)
+                
+                self.update_log(f"Macro saved to {file_path}")
+            except Exception as e:
+                self.update_log(f"Error saving macro: {e}")
+    
+    def load_macro(self):
+        from tkinter import filedialog
+        file_path = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            title="Load Macro"
+        )
+        
+        if file_path:
+            try:
+                with open(file_path, 'r') as f:
+                    macro_data = json.load(f)
+                
+                if 'actions' not in macro_data:
+                    self.update_log("Invalid macro file format")
+                    return
+                
+                # Convert back to proper format
+                loaded_actions = []
+                for action in macro_data['actions']:
+                    if action[0] == 'click':
+                        # Convert button string back to button object
+                        action[3] = Button.right if action[3] == 'right' else Button.left
+                        loaded_actions.append(tuple(action))
+                    else:
+                        loaded_actions.append(tuple(action))
+                
+                self.recorder.actions = loaded_actions
+                self.refresh_actions_display()
+                self.update_status()
+                
+                created = macro_data.get('created', 'Unknown')
+                action_count = len(loaded_actions)
+                self.update_log(f"Loaded macro with {action_count} actions (created: {created})")
+                
+            except Exception as e:
+                self.update_log(f"Error loading macro: {e}")
         
     def update_status(self):
         if self.recorder.recording:
@@ -316,6 +608,11 @@ class MacroRecorderGUI:
         config_text = (f"Screen: {self.recorder.screen_width}x{self.recorder.screen_height} | "
                       f"Scale: ({self.recorder.scale_x:.2f}, {self.recorder.scale_y:.2f})")
         self.config_label.config(text=config_text)
+        
+        # Refresh actions display if actions count changed
+        current_action_count = len(self.actions_tree.get_children())
+        if current_action_count != len(self.recorder.actions):
+            self.refresh_actions_display()
         
         self.root.after(100, self.update_status)
         
