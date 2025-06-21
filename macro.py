@@ -255,7 +255,7 @@ class MouseRecorderRepeater:
 class MacroRecorderGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Mouse Macro Recorder")
+        self.root.title("Macro Recorder")
         self.root.geometry("750x500")  # Increased width to accommodate all buttons + 50px
         self.root.resizable(True, True)
         
@@ -704,7 +704,7 @@ class MacroRecorderGUI:
         self.log_text.see(tk.END)
         
     def run(self):
-        self.update_log("Mouse Macro Recorder started")
+        self.update_log("Macro Recorder started")
         self.update_log("Use buttons above or keyboard shortcuts")
         try:
             self.root.mainloop()

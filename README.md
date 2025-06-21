@@ -1,6 +1,6 @@
 # 🖱️ Simple Macro Recorder
 
-A powerful yet simple Python-based mouse macro recorder with an intuitive GUI interface. Perfect for automating repetitive mouse tasks, testing applications, or creating demonstrations.
+A powerful yet simple Python-based macro recorder with an intuitive GUI interface. Perfect for automating repetitive mouse and keyboard tasks, testing applications, or creating demonstrations.
 
 ## ✨ Features
 
