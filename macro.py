@@ -94,6 +94,7 @@ class MouseRecorderRepeater:
 
     def on_press(self, key):
         try:
+            # Control keys for the application
             if key == Key.left:
                 self.toggle_recording()
             elif key == Key.right:
@@ -105,8 +106,36 @@ class MouseRecorderRepeater:
                 self.exit_flag = True
                 self.repeating = False
                 return False
+            # Record keyboard events during recording (if enabled)
+            elif self.recording and getattr(self, 'keyboard_recording_enabled', True):
+                current_time = time.time()
+                try:
+                    # Try to get the character representation
+                    key_name = key.char if hasattr(key, 'char') and key.char else key.name
+                except AttributeError:
+                    key_name = str(key).replace('Key.', '')
+                
+                self.actions.append(('keypress', key_name, True, current_time - self.last_action_time))
+                self.last_action_time = current_time
+                self.log(f"Recorded key press: {key_name}")
         except AttributeError:
             pass
+    
+    def on_release(self, key):
+        if self.recording and getattr(self, 'keyboard_recording_enabled', True):
+            try:
+                current_time = time.time()
+                try:
+                    # Try to get the character representation
+                    key_name = key.char if hasattr(key, 'char') and key.char else key.name
+                except AttributeError:
+                    key_name = str(key).replace('Key.', '')
+                
+                self.actions.append(('keypress', key_name, False, current_time - self.last_action_time))
+                self.last_action_time = current_time
+                self.log(f"Recorded key release: {key_name}")
+            except AttributeError:
+                pass
 
     def start_calibration(self):
         if not self.calibrating:
@@ -177,21 +206,44 @@ class MouseRecorderRepeater:
 
                 time.sleep(action[-1])
 
-                if action[0] in ('move', 'click'):
+                if action[0] == 'move':
+                    scaled_x = (action[1] - self.offset_x) / self.scale_x
+                    scaled_y = (action[2] - self.offset_y) / self.scale_y
+                    self.mouse.position = (int(scaled_x), int(scaled_y))
+                elif action[0] == 'click':
                     scaled_x = (action[1] - self.offset_x) / self.scale_x
                     scaled_y = (action[2] - self.offset_y) / self.scale_y
                     self.mouse.position = (int(scaled_x), int(scaled_y))
                     
-                    if action[0] == 'click':
-                        if action[4]:  # pressed
-                            self.mouse.press(action[3])
-                            self.log(f"Replayed {'right' if action[3] == Button.right else 'left'} click at ({scaled_x}, {scaled_y})")
+                    if action[4]:  # pressed
+                        self.mouse.press(action[3])
+                        self.log(f"Replayed {'right' if action[3] == Button.right else 'left'} click at ({scaled_x}, {scaled_y})")
+                    else:
+                        self.mouse.release(action[3])
+                elif action[0] == 'keypress':
+                    key_name, pressed = action[1], action[2]
+                    
+                    try:
+                        # Handle special keys
+                        if len(key_name) == 1:
+                            # Single character key
+                            key_obj = key_name
                         else:
-                            self.mouse.release(action[3])
+                            # Special key (like 'enter', 'space', etc.)
+                            key_obj = getattr(Key, key_name.lower(), key_name)
+                        
+                        if pressed:
+                            self.keyboard.press(key_obj)
+                            self.log(f"Replayed key press: {key_name}")
+                        else:
+                            self.keyboard.release(key_obj)
+                            self.log(f"Replayed key release: {key_name}")
+                    except Exception as e:
+                        self.log(f"Error replaying key {key_name}: {e}")
 
     def run(self):
         with mouse.Listener(on_move=self.on_move, on_click=self.on_click) as mouse_listener, \
-             keyboard.Listener(on_press=self.on_press) as keyboard_listener:
+             keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as keyboard_listener:
             
             self.log("Press Up Arrow key to start calibration.")
             self.log("Press Left Arrow key to start/stop recording.")
@@ -241,7 +293,17 @@ class MacroRecorderGUI:
         self.save_btn.pack(side=tk.LEFT, padx=(0, 5))
         
         self.load_btn = ttk.Button(button_frame, text="Load Macro", command=self.load_macro)
-        self.load_btn.pack(side=tk.LEFT)
+        self.load_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Keyboard recording toggle
+        self.keyboard_enabled = tk.BooleanVar(value=True)
+        self.keyboard_checkbox = ttk.Checkbutton(
+            button_frame, 
+            text="Record Keyboard", 
+            variable=self.keyboard_enabled,
+            command=self.toggle_keyboard_recording
+        )
+        self.keyboard_checkbox.pack(side=tk.LEFT)
         
         # Status display
         status_frame = ttk.LabelFrame(main_frame, text="Status", padding="5")
@@ -263,21 +325,23 @@ class MacroRecorderGUI:
         actions_frame.rowconfigure(0, weight=1)
         
         # Create treeview for actions
-        columns = ('Type', 'X', 'Y', 'Button', 'Delay (s)')
+        columns = ('Type', 'Key/Button', 'X', 'Y', 'Action', 'Delay (s)')
         self.actions_tree = ttk.Treeview(actions_frame, columns=columns, show='headings', height=8)
         
         # Configure column headings
         self.actions_tree.heading('Type', text='Type')
+        self.actions_tree.heading('Key/Button', text='Key/Button')
         self.actions_tree.heading('X', text='X')
         self.actions_tree.heading('Y', text='Y')
-        self.actions_tree.heading('Button', text='Button')
+        self.actions_tree.heading('Action', text='Action')
         self.actions_tree.heading('Delay (s)', text='Delay (s)')
         
         # Configure column widths
-        self.actions_tree.column('Type', width=80)
-        self.actions_tree.column('X', width=60)
-        self.actions_tree.column('Y', width=60)
-        self.actions_tree.column('Button', width=80)
+        self.actions_tree.column('Type', width=70)
+        self.actions_tree.column('Key/Button', width=80)
+        self.actions_tree.column('X', width=50)
+        self.actions_tree.column('Y', width=50)
+        self.actions_tree.column('Action', width=70)
         self.actions_tree.column('Delay (s)', width=80)
         
         # Add scrollbar to treeview
@@ -496,12 +560,16 @@ class MacroRecorderGUI:
             
             if action_type == 'move':
                 x, y, delay = action[1], action[2], action[3]
-                self.actions_tree.insert('', 'end', values=(action_type, x, y, '-', f"{delay:.3f}"))
+                self.actions_tree.insert('', 'end', values=('Mouse', '-', x, y, 'Move', f"{delay:.3f}"))
             elif action_type == 'click':
                 x, y, button, pressed, delay = action[1], action[2], action[3], action[4], action[5]
                 button_text = 'Right' if button.name == 'right' else 'Left'
                 press_text = 'Press' if pressed else 'Release'
-                self.actions_tree.insert('', 'end', values=(f"{press_text}", x, y, button_text, f"{delay:.3f}"))
+                self.actions_tree.insert('', 'end', values=('Mouse', button_text, x, y, press_text, f"{delay:.3f}"))
+            elif action_type == 'keypress':
+                key_name, pressed, delay = action[1], action[2], action[3]
+                press_text = 'Press' if pressed else 'Release'
+                self.actions_tree.insert('', 'end', values=('Keyboard', key_name, '-', '-', press_text, f"{delay:.3f}"))
     
     def save_macro(self):
         if not self.recorder.actions:
@@ -532,7 +600,11 @@ class MacroRecorderGUI:
                         action_list = list(action)
                         action_list[3] = action[3].name  # Convert button to string
                         serializable_actions.append(action_list)
+                    elif action[0] == 'keypress':
+                        # Keyboard actions are already serializable
+                        serializable_actions.append(list(action))
                     else:
+                        # Mouse move actions
                         serializable_actions.append(list(action))
                 
                 macro_data = {
@@ -571,7 +643,11 @@ class MacroRecorderGUI:
                         # Convert button string back to button object
                         action[3] = Button.right if action[3] == 'right' else Button.left
                         loaded_actions.append(tuple(action))
+                    elif action[0] == 'keypress':
+                        # Keyboard actions are already in correct format
+                        loaded_actions.append(tuple(action))
                     else:
+                        # Mouse move actions
                         loaded_actions.append(tuple(action))
                 
                 self.recorder.actions = loaded_actions
@@ -584,6 +660,12 @@ class MacroRecorderGUI:
                 
             except Exception as e:
                 self.update_log(f"Error loading macro: {e}")
+    
+    def toggle_keyboard_recording(self):
+        enabled = self.keyboard_enabled.get()
+        self.recorder.keyboard_recording_enabled = enabled
+        status = "enabled" if enabled else "disabled"
+        self.update_log(f"Keyboard recording {status}")
         
     def update_status(self):
         if self.recorder.recording:

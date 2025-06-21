@@ -16,6 +16,8 @@ A powerful yet simple Python-based mouse macro recorder with an intuitive GUI in
 - 🗑️ **Action Management** - Delete, reorder, and modify individual actions
 - 💾 **Macro Save/Load** - Export and import macros with JSON format and metadata
 - 🔄 **Real-time Updates** - Live action list that updates as you record
+- ⌨️ **Keyboard Recording** - Capture and replay keyboard events with optional toggle control
+- 🎹 **Mixed Input Support** - Record both mouse and keyboard actions in a single macro
 
 ## 🚀 Quick Start
 
@@ -54,6 +56,7 @@ pythonw macro.py
 | **Edit Timing** | Modify delay for selected action in the list |
 | **Delete Selected** | Remove selected action from the sequence |
 | **Move Up/Down** | Reorder actions in the sequence |
+| **Record Keyboard** | Toggle checkbox to enable/disable keyboard event recording |
 
 ### Keyboard Shortcuts (Global)
 | Key | Action |
@@ -77,10 +80,19 @@ pythonw macro.py
 7. **Repeat** - Actions will loop until you stop replay
 
 ### Action Editing Features
-- **Interactive Action List**: View all recorded actions with Type, Coordinates, Button, and Delay columns
+- **Interactive Action List**: View all recorded actions with Type, Key/Button, Coordinates, Action, and Delay columns
+- **Mixed Input Display**: Mouse and keyboard actions shown together in chronological order
 - **Precision Timing**: Edit individual action delays with millisecond precision
 - **Sequence Management**: Delete unwanted actions or reorder them with move up/down
 - **Macro Persistence**: Save and load macros with metadata including creation time and action count
+
+### Keyboard Support
+- **Full Keyboard Recording**: Capture all key presses and releases including special keys
+- **Character Keys**: Letters, numbers, symbols, and punctuation
+- **Special Keys**: Enter, Space, Tab, Ctrl, Alt, Shift, function keys, and more
+- **Toggle Control**: Enable/disable keyboard recording with the "Record Keyboard" checkbox
+- **Mixed Macros**: Combine mouse movements, clicks, and keyboard input in a single macro
+- **Accurate Playback**: Precise timing and key state reproduction during replay
 
 ## ⚙️ Configuration & Calibration
 
@@ -113,10 +125,14 @@ Saved macros use JSON format with metadata:
 {
   "actions": [
     ["move", 100, 200, 0.1],
-    ["click", 150, 250, "left", true, 0.5]
+    ["click", 150, 250, "left", true, 0.5],
+    ["keypress", "h", true, 0.2],
+    ["keypress", "h", false, 0.1],
+    ["keypress", "enter", true, 0.3],
+    ["keypress", "enter", false, 0.1]
   ],
   "created": "2024-12-21 14:30:52",
-  "action_count": 2
+  "action_count": 6
 }
 ```
 
